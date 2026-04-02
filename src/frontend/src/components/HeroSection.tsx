@@ -1,12 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { MapPin, RefreshCw } from "lucide-react";
 import { motion } from "motion/react";
-import type { LocationInfo } from "../utils/geolocation";
+import type { LocationError, LocationInfo } from "../utils/geolocation";
 
 interface HeroSectionProps {
   location: LocationInfo | null;
-  locationError: string | null;
+  locationError: LocationError | null;
   onRegenerateAll: () => void;
+  onRetryLocation: () => void;
   isLoading: boolean;
 }
 
@@ -14,8 +15,11 @@ export function HeroSection({
   location,
   locationError,
   onRegenerateAll,
+  onRetryLocation,
   isLoading,
 }: HeroSectionProps) {
+  const isDenied = locationError?.type === "denied";
+
   return (
     <section className="max-w-[1160px] mx-auto px-6 py-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
       {/* Left: hero text */}
@@ -36,12 +40,43 @@ export function HeroSection({
         </p>
 
         {/* Location pill / status */}
-        <div className="mt-3 inline-flex items-center gap-2 text-sm">
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           {locationError ? (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-xs font-medium">
-              <MapPin className="w-3 h-3" />
-              {locationError} — showing Default recommendations
-            </span>
+            isDenied ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-xs font-medium">
+                  <MapPin className="w-3 h-3" />
+                  Location access denied — showing Default recommendations
+                </span>
+                <button
+                  type="button"
+                  onClick={onRetryLocation}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand/10 text-brand border border-brand/20 text-xs font-semibold hover:bg-brand/20 transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Allow Location
+                </button>
+                <p className="w-full text-xs text-muted-foreground mt-1">
+                  To enable: click the location icon in your browser's address
+                  bar and allow access, then tap Allow Location.
+                </p>
+              </>
+            ) : (
+              <>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-700 border border-amber-200 text-xs font-medium">
+                  <MapPin className="w-3 h-3" />
+                  {locationError.message} — showing Default recommendations
+                </span>
+                <button
+                  type="button"
+                  onClick={onRetryLocation}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand/10 text-brand border border-brand/20 text-xs font-semibold hover:bg-brand/20 transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Retry
+                </button>
+              </>
+            )
           ) : location ? (
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand/10 text-brand border border-brand/20 text-xs font-medium">
               <MapPin className="w-3 h-3" />

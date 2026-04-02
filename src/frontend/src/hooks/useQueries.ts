@@ -15,11 +15,12 @@ function useIsAuthenticated() {
 
 export function useGetMealSuggestions(region: string, seed: bigint) {
   const { actor, isFetching } = useActor();
+  const normalizedRegion = region.toLowerCase();
   return useQuery<MealSuggestion[]>({
-    queryKey: ["meals", region, seed.toString()],
+    queryKey: ["meals", normalizedRegion, seed.toString()],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMealSuggestions(region, seed);
+      return actor.getMealSuggestions(normalizedRegion, seed);
     },
     enabled: !!actor && !isFetching && !!region,
     staleTime: 1000 * 60 * 5,
@@ -28,11 +29,12 @@ export function useGetMealSuggestions(region: string, seed: bigint) {
 
 export function useGetNearbyPlaces(region: string) {
   const { actor, isFetching } = useActor();
+  const normalizedRegion = region.toLowerCase();
   return useQuery<Place[]>({
-    queryKey: ["places", region],
+    queryKey: ["places", normalizedRegion],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getNearbyPlaces(region);
+      return actor.getNearbyPlaces(normalizedRegion);
     },
     enabled: !!actor && !isFetching && !!region,
     staleTime: 1000 * 60 * 10,

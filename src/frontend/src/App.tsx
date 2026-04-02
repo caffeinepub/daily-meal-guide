@@ -21,6 +21,7 @@ import {
   useRemoveFavoriteMeal,
 } from "./hooks/useQueries";
 import {
+  type LocationError,
   type LocationInfo,
   type Region,
   detectLocation,
@@ -48,32 +49,46 @@ export default function App() {
   const isAuthenticated = !!identity && !identity.getPrincipal().isAnonymous();
 
   const [location, setLocation] = useState<LocationInfo | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<LocationError | null>(
+    null,
+  );
   const [region, setRegion] = useState<Region>("Default");
   const [seed, setSeed] = useState<bigint>(() => BigInt(Date.now()));
   const [refreshingSlot, setRefreshingSlot] = useState<MealSlot | null>(null);
   const [accountOpen, setAccountOpen] = useState(false);
   const locationDetected = useRef(false);
 
-  // Detect geolocation on mount
-  useEffect(() => {
-    if (locationDetected.current) return;
-    locationDetected.current = true;
-
+  const runDetectLocation = useCallback(() => {
+    setLocationError(null);
     detectLocation()
       .then((loc) => {
         setLocation(loc);
         setRegion(loc.region);
         setSeed(BigInt(Date.now()));
+        locationDetected.current = true;
       })
-      .catch((err: Error) => {
-        setLocationError(err.message);
+      .catch((err: LocationError) => {
+        setLocationError(err);
         setRegion("Default");
-        toast.error("Location unavailable — showing default recommendations.", {
-          duration: 5000,
-        });
+        if (err.type !== "denied") {
+          toast.error(
+            "Location unavailable — showing default recommendations.",
+            {
+              duration: 5000,
+            },
+          );
+        }
       });
   }, []);
+
+  // Detect geolocation on mount
+  useEffect(() => {
+    if (locationDetected.current) return;
+    runDetectLocation();
+  }, [runDetectLocation]);
+
+  // Normalize region for backend (backend expects lowercase)
+  const normalizedRegion = region.toLowerCase();
 
   // Fetch all meals and places
   const {
@@ -114,8 +129,8 @@ export default function App() {
     const newSeed = BigInt(Date.now());
     setSeed(newSeed);
     setSlotOverrides({});
-    queryClient.invalidateQueries({ queryKey: ["meals", region] });
-  }, [region, queryClient]);
+    queryClient.invalidateQueries({ queryKey: ["meals", normalizedRegion] });
+  }, [normalizedRegion, queryClient]);
 
   const handleRefreshSlot = useCallback(
     async (slot: MealSlot) => {
@@ -123,7 +138,7 @@ export default function App() {
       setRefreshingSlot(slot);
       try {
         const results = await actor.getMealSuggestions(
-          region,
+          normalizedRegion,
           BigInt(Date.now()),
         );
         setSlotOverrides((prev) => ({ ...prev, [slot]: results }));
@@ -133,7 +148,7 @@ export default function App() {
         setRefreshingSlot(null);
       }
     },
-    [actor, region],
+    [actor, normalizedRegion],
   );
 
   const handleToggleFavorite = useCallback(
@@ -190,6 +205,7 @@ export default function App() {
           location={location}
           locationError={locationError}
           onRegenerateAll={handleRegenerateAll}
+          onRetryLocation={runDetectLocation}
           isLoading={isLoadingMeals}
         />
 

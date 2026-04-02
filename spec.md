@@ -1,52 +1,24 @@
-# MealMaven
+# Daily Meal Guide
 
 ## Current State
-The app is a location-based daily meal guide that:
-- Detects user geolocation and maps it to a cuisine region (asian, mediterranean, american, mexican, indian, default)
-- Fetches breakfast, lunch, and dinner meal suggestions from the Motoko backend based on region + seed
-- Shows nearby restaurant/mall place cards
-- Has a Header with nav links (Plan Today, Recipes, Explore, Account) — Account is currently a dead link
-- Backend has `getMealSuggestions`, `getNearbyPlaces`, and `getSupportedRegions` public queries
-- No authentication or user profiles exist yet
+The app suggests one meal per slot (breakfast, lunch, dinner) per region. Each region has exactly 3 meals (one per slot) hardcoded in the backend. When the user clicks "Regenerate All Meals", the same meals always appear because there's only one option per slot. African region has: Akara (breakfast), Jollof Rice (lunch), Egusi Soup (dinner).
 
 ## Requested Changes (Diff)
 
 ### Add
-- Internet Identity login/logout via the `authorization` Caffeine component
-- User profile stored on-chain per principal: display name, dietary preferences (Vegetarian, Halal, Gluten-Free, Vegan, Dairy-Free, Nut-Free), and saved favorite meals (list of meal IDs with names/emojis)
-- Backend functions: `getProfile`, `saveProfile`, `addFavoriteMeal`, `removeFavoriteMeal`
-- Account page/panel accessible from the Header "Account" nav link — shows login prompt if unauthenticated, or profile + favorites if logged in
-- Favorite button (heart icon) on each MealCard — toggles save/unsave, only visible/active when logged in
-- Meal suggestions filtered by dietary preferences when a user is logged in and has set preferences
-- Visual indicator on MealCards when a meal matches the user's dietary preferences
+- Multiple meal options per slot per region (at least 3 options per slot = 9 meals per region pool)
+- Daily rotation logic: use the current day-of-year + seed to cycle through meal options so users see variety each day and when they click Regenerate
+- Expand all regions with more meal variety, especially African cuisine
 
 ### Modify
-- Header: "Account" nav link opens the Account panel/page; show avatar/initial + logged-in state when authenticated
-- MealCard: add a favorite heart button overlay
-- App.tsx: integrate auth state, pass favorites and preferences down to meal section
-- Backend: add user profile management functions alongside existing meal/place queries; meal suggestions can optionally be filtered by dietary tag
+- Backend `getMealSuggestions`: Update meal data arrays to have multiple options per slot, improve rotation algorithm to pick one per slot from the pool
+- Each region's meal pool: expand from 3 meals to 9 meals (3 options × 3 slots)
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Select `authorization` Caffeine component
-2. Generate updated Motoko backend with:
-   - `UserProfile` type: `{ displayName: Text; dietaryPreferences: [Text]; favoriteMealIds: [Nat] }`
-   - `FavoriteMeal` type: `{ id: Nat; name: Text; emoji: Text; cuisine: Text; slot: Text }`
-   - Stable var `profiles : TrieMap<Principal, UserProfile>`
-   - `getProfile()` — returns caller's profile (or default empty profile)
-   - `saveProfile(displayName, dietaryPreferences)` — upsert profile
-   - `addFavoriteMeal(meal: FavoriteMeal)` — add to favorites
-   - `removeFavoriteMeal(mealId: Nat)` — remove from favorites
-   - Meal suggestions still returned as-is (filtering happens on frontend based on preferences)
-3. Frontend:
-   - Wire Internet Identity login/logout using `useInternetIdentity` hook (already present)
-   - Create `AccountPanel` component (slide-in sheet or page section) with:
-     - Login/logout button
-     - Display name input
-     - Dietary preferences multi-select checkboxes
-     - Saved favorites list
-   - Update `Header` to show login state and open `AccountPanel`
-   - Add heart favorite button to `MealCard`, wired to `addFavoriteMeal`/`removeFavoriteMeal`
-   - Filter/highlight meal suggestions based on dietary preferences client-side
+1. Expand meal arrays for all regions to 9 meals each (3 per slot)
+2. Update `getSortedMealSuggestions` to select one meal per slot from the expanded pool using the seed for variety
+3. African region gets the most expansion with authentic variety: Akara, Pap & Fried Egg, Ogi (breakfast); Jollof Rice, Fufu & Egusi, Nkwobi (lunch); Egusi Soup, Pounded Yam & Ofe Onugbu, Suya (dinner)
+4. No frontend changes needed -- the existing Regenerate button already provides new seeds
